@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Glass Shuffle</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <div class="logo">Glass<span>Shuffle</span></div>
+        <div class="stats-nav">
+            <button id="sound-btn" class="nav-btn icon-btn" title="Toggle Sound">🔊</button>
+            <button id="reset-btn" class="nav-btn icon-btn" title="Reset Progress">🔄</button>
+            <button id="history-btn" class="nav-btn">📊 History</button>
+            <div class="balance-display">
+                <span class="label">Balance</span>
+                <span class="value" id="balance-display">$1000.00</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Game Area -->
+    <main class="game-wrapper">
+        
+        <!-- Game Header / Status -->
+        <div class="game-header">
+            <div class="status-row">
+                <h1 id="status-text" class="status-title">Place your bets</h1>
+                <button id="pause-btn" class="pause-btn" disabled>⏸️ Pause</button>
+            </div>
+            <div class="timer-container">
+                <div class="timer-bar" id="timer-bar"></div>
+            </div>
+        </div>
+
+        <!-- The Table -->
+        <div class="table-area">
+            <div class="glow-effect"></div>
+            
+            <!-- The 3 Glasses -->
+            <div class="glasses-container" id="glasses-container">
+                <div class="glass-wrapper" id="wrapper-0">
+                    <div class="glass" id="glass-0">
+                        <div class="glass-shine"></div>
+                        <div class="glass-rim"></div>
+                    </div>
+                </div>
+                <div class="glass-wrapper" id="wrapper-1">
+                    <div class="glass" id="glass-1">
+                        <div class="glass-shine"></div>
+                        <div class="glass-rim"></div>
+                    </div>
+                </div>
+                <div class="glass-wrapper" id="wrapper-2">
+                    <div class="glass" id="glass-2">
+                        <div class="glass-shine"></div>
+                        <div class="glass-rim"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- The Golden Ball -->
+            <div class="ball-wrapper" id="ball-wrapper">
+                <div class="ball"></div>
+            </div>
+        </div>
+
+        <!-- Bottom Controls -->
+        <div class="controls-area">
+            <div class="betting-panel" id="betting-panel">
+                <label>Bet Amount (Min $10)</label>
+                <div class="input-group">
+                    <span class="currency">$</span>
+                    <input type="number" id="bet-input" value="100" min="10" step="10">
+                </div>
+                
+                <!-- Quick Bet Buttons -->
+                <div class="quick-bets-group">
+                    <button class="quick-btn" onclick="setBet(10)">10</button>
+                    <button class="quick-btn" onclick="setBet(50)">50</button>
+                    <button class="quick-btn" onclick="setBet(100)">100</button>
+                    <button class="quick-btn" onclick="setBet(300)">300</button>
+                    <button class="quick-btn" onclick="setBet(500)">500</button>
+                    <button class="quick-btn" onclick="setBet(700)">700</button>
+                    <button class="quick-btn" onclick="setBet(1000)">1000</button>
+                    <button class="quick-btn" onclick="setBet('max')">MAX</button>
+                </div>
+
+                <button id="start-btn" class="primary-btn">Place Bet & Start</button>
+            </div>
+
+            <div class="fee-notice">
+                * A 5% house fee is applied to all bets.
+            </div>
+        </div>
+    </main>
+
+    <!-- History Modal -->
+    <div class="modal-overlay" id="history-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Game History</h2>
+                <button class="close-btn" id="close-modal">&times;</button>
+            </div>
+            <div class="modal-stats" id="modal-stats">
+                <!-- Stats populated by JS -->
+            </div>
+            <div class="history-list" id="history-list">
+                <!-- History items populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
