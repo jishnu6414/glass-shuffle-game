@@ -3,119 +3,368 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium Glass Shuffle</title>
+    <meta name="theme-color" content="#080b12">
+    <title>GLASS SHUFFLE — Live Cup Game</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div class="app-background" aria-hidden="true"></div>
 
-    <!-- Top Navigation -->
-    <nav class="top-nav">
-        <div class="logo">Glass<span>Shuffle</span></div>
-        <div class="stats-nav">
-            <button id="sound-btn" class="nav-btn icon-btn" title="Toggle Sound">🔊</button>
-            <button id="reset-btn" class="nav-btn icon-btn" title="Reset Progress">🔄</button>
-            <button id="history-btn" class="nav-btn">📊 History</button>
-            <div class="balance-display">
-                <span class="label">Balance</span>
-                <span class="value" id="balance-display">$1000.00</span>
+    <header class="topbar">
+        <a class="brand" href="#game" data-view="game" aria-label="GLASS SHUFFLE home">
+            <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+            <span class="brand-name">GLASS <strong>SHUFFLE</strong></span>
+        </a>
+
+        <nav class="primary-nav" aria-label="Primary navigation">
+            <button class="nav-link is-active" type="button" data-view="game">Game</button>
+            <button class="nav-link" type="button" data-view="history">History</button>
+            <button class="nav-link" type="button" data-view="bets">My bets</button>
+            <button class="nav-link" type="button" data-view="wallet">Wallet</button>
+            <button class="nav-link" type="button" data-view="profile">Profile</button>
+            <button class="nav-link nav-link-admin" type="button" data-view="admin" hidden>Admin</button>
+        </nav>
+
+        <div class="topbar-actions">
+            <button class="icon-action" id="sound-toggle" type="button" aria-pressed="false" title="Toggle game sounds">
+                <span class="sound-icon" aria-hidden="true"></span>
+                <span class="sound-label">Sound on</span>
+            </button>
+            <button class="account-action" id="auth-nav-button" type="button">Sign in</button>
+            <div class="top-balance" aria-label="Current balance">
+                <span class="top-balance-label">Balance</span>
+                <strong id="top-balance-value">$1,000.00</strong>
             </div>
         </div>
-    </nav>
+    </header>
 
-    <!-- Main Game Area -->
-    <main class="game-wrapper">
-        
-        <!-- Game Header / Status -->
-        <div class="game-header">
-            <div class="status-row">
-                <h1 id="status-text" class="status-title">Place your bets</h1>
-                <button id="pause-btn" class="pause-btn" disabled>⏸️ Pause</button>
-            </div>
-            <div class="timer-container">
-                <div class="timer-bar" id="timer-bar"></div>
-            </div>
-        </div>
-
-        <!-- The Table -->
-        <div class="table-area">
-            <div class="glow-effect"></div>
-            
-            <!-- The 3 Glasses -->
-            <div class="glasses-container" id="glasses-container">
-                <div class="glass-wrapper" id="wrapper-0">
-                    <div class="glass" id="glass-0">
-                        <div class="glass-shine"></div>
-                        <div class="glass-rim"></div>
-                    </div>
-                </div>
-                <div class="glass-wrapper" id="wrapper-1">
-                    <div class="glass" id="glass-1">
-                        <div class="glass-shine"></div>
-                        <div class="glass-rim"></div>
-                    </div>
-                </div>
-                <div class="glass-wrapper" id="wrapper-2">
-                    <div class="glass" id="glass-2">
-                        <div class="glass-shine"></div>
-                        <div class="glass-rim"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- The Golden Ball -->
-            <div class="ball-wrapper" id="ball-wrapper">
-                <div class="ball"></div>
-            </div>
-        </div>
-
-        <!-- Bottom Controls -->
-        <div class="controls-area">
-            <div class="betting-panel" id="betting-panel">
-                <label>Bet Amount (Min $10)</label>
-                <div class="input-group">
-                    <span class="currency">$</span>
-                    <input type="number" id="bet-input" value="100" min="10" step="10">
-                </div>
-                
-                <!-- Quick Bet Buttons -->
-                <div class="quick-bets-group">
-                    <button class="quick-btn" onclick="setBet(10)">10</button>
-                    <button class="quick-btn" onclick="setBet(50)">50</button>
-                    <button class="quick-btn" onclick="setBet(100)">100</button>
-                    <button class="quick-btn" onclick="setBet(300)">300</button>
-                    <button class="quick-btn" onclick="setBet(500)">500</button>
-                    <button class="quick-btn" onclick="setBet(700)">700</button>
-                    <button class="quick-btn" onclick="setBet(1000)">1000</button>
-                    <button class="quick-btn" onclick="setBet('max')">MAX</button>
-                </div>
-
-                <button id="start-btn" class="primary-btn">Place Bet & Start</button>
-            </div>
-
-            <div class="fee-notice">
-                * A 5% house fee is applied to all bets.
-            </div>
-        </div>
-    </main>
-
-    <!-- History Modal -->
-    <div class="modal-overlay" id="history-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Game History</h2>
-                <button class="close-btn" id="close-modal">&times;</button>
-            </div>
-            <div class="modal-stats" id="modal-stats">
-                <!-- Stats populated by JS -->
-            </div>
-            <div class="history-list" id="history-list">
-                <!-- History items populated by JS -->
-            </div>
-        </div>
+    <div class="connection-banner" id="connection-banner" role="status" aria-live="polite" hidden>
+        <span class="connection-dot" aria-hidden="true"></span>
+        <span id="connection-message"></span>
+        <button class="text-button" id="reconnect-button" type="button">Reconnect</button>
     </div>
 
-    <!-- Toast Notifications -->
-    <div id="toast-container"></div>
+    <main class="app-main">
+        <section class="view is-active" id="view-game" data-view-panel="game" aria-labelledby="game-heading">
+            <div class="page-heading game-heading">
+                <div>
+                    <p class="eyebrow"><span class="live-dot" aria-hidden="true"></span> Table 01 · <span id="mode-label">Connecting</span></p>
+                    <h1 id="game-heading">Find the ball. Trust the shuffle.</h1>
+                    <p class="page-subtitle">A server-authoritative cup game with transparent stakes, fast rounds, and a clean table.</p>
+                </div>
+                <div class="round-meta" aria-live="polite">
+                    <span class="round-meta-label">Round</span>
+                    <strong id="round-id">Ready</strong>
+                </div>
+            </div>
+
+            <div class="phase-panel" aria-label="Round phase">
+                <div class="phase-status">
+                    <div>
+                        <span class="phase-kicker">Current phase</span>
+                        <h2 id="phase-title">Place your bet</h2>
+                        <p id="phase-message">Choose your stake, then place it to open a round.</p>
+                    </div>
+                    <div class="phase-clock" aria-live="polite">
+                        <span id="phase-clock-label">Waiting</span>
+                        <div class="phase-progress-track" aria-hidden="true"><span id="phase-progress"></span></div>
+                    </div>
+                </div>
+                <ol class="phase-rail" aria-label="Round phases">
+                    <li class="phase-step is-current" data-phase-step="BETTING"><span>01</span><strong>Bet</strong></li>
+                    <li class="phase-step" data-phase-step="COVER"><span>02</span><strong>Cover</strong></li>
+                    <li class="phase-step" data-phase-step="SHUFFLING"><span>03</span><strong>Shuffle</strong></li>
+                    <li class="phase-step" data-phase-step="PICKING"><span>04</span><strong>Pick</strong></li>
+                    <li class="phase-step" data-phase-step="RESULT"><span>05</span><strong>Result</strong></li>
+                </ol>
+            </div>
+
+            <div class="game-layout">
+                <section class="game-board panel" aria-labelledby="table-heading">
+                    <div class="board-header">
+                        <div>
+                            <span class="eyebrow">Live table</span>
+                            <h2 id="table-heading">The granite table</h2>
+                        </div>
+                        <span class="board-status" id="board-status">Accepting bets</span>
+                    </div>
+
+                    <div class="table-surface" id="table-surface" role="group" aria-label="Three cups on the game table">
+                        <div class="table-light" aria-hidden="true"></div>
+                        <div class="table-edge" aria-hidden="true"></div>
+                        <div class="ball" id="ball" aria-hidden="true"><span></span></div>
+
+                        <div class="cup-wrap" id="cup-wrap-0" data-cup-id="0" style="left: 16.66%;">
+                            <button class="cup" id="cup-0" type="button" data-cup-id="0" disabled aria-label="Cup 1">
+                                <span class="cup-body" aria-hidden="true">
+                                    <span class="cup-gloss"></span>
+                                    <span class="cup-ridges ridge-one"></span>
+                                    <span class="cup-ridges ridge-two"></span>
+                                    <span class="cup-ridges ridge-three"></span>
+                                    <span class="cup-rim"></span>
+                                </span>
+                                <span class="cup-label">1</span>
+                            </button>
+                        </div>
+                        <div class="cup-wrap" id="cup-wrap-1" data-cup-id="1" style="left: 50%;">
+                            <button class="cup" id="cup-1" type="button" data-cup-id="1" disabled aria-label="Cup 2">
+                                <span class="cup-body" aria-hidden="true">
+                                    <span class="cup-gloss"></span>
+                                    <span class="cup-ridges ridge-one"></span>
+                                    <span class="cup-ridges ridge-two"></span>
+                                    <span class="cup-ridges ridge-three"></span>
+                                    <span class="cup-rim"></span>
+                                </span>
+                                <span class="cup-label">2</span>
+                            </button>
+                        </div>
+                        <div class="cup-wrap" id="cup-wrap-2" data-cup-id="2" style="left: 83.33%;">
+                            <button class="cup" id="cup-2" type="button" data-cup-id="2" disabled aria-label="Cup 3">
+                                <span class="cup-body" aria-hidden="true">
+                                    <span class="cup-gloss"></span>
+                                    <span class="cup-ridges ridge-one"></span>
+                                    <span class="cup-ridges ridge-two"></span>
+                                    <span class="cup-ridges ridge-three"></span>
+                                    <span class="cup-rim"></span>
+                                </span>
+                                <span class="cup-label">3</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="board-footer">
+                        <p id="selection-help">Place a bet to activate the table.</p>
+                        <span class="keyboard-hint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> select a cup</span>
+                    </div>
+                </section>
+
+                <aside class="bet-card panel" aria-labelledby="bet-heading">
+                    <div class="card-heading">
+                        <div>
+                            <span class="eyebrow">Stake</span>
+                            <h2 id="bet-heading">Place your bet</h2>
+                        </div>
+                        <span class="fee-badge" id="fee-badge">5% fee</span>
+                    </div>
+
+                    <div class="balance-strip">
+                        <div>
+                            <span>Available balance</span>
+                            <strong id="bet-balance">$1,000.00</strong>
+                        </div>
+                        <div class="balance-limits">
+                            <span>Min <strong id="min-bet">$10</strong></span>
+                            <span>Max <strong id="max-bet">$952.38</strong></span>
+                        </div>
+                    </div>
+
+                    <form id="bet-form" novalidate>
+                        <label class="field-label" for="bet-input">Stake amount</label>
+                        <div class="money-input">
+                            <span aria-hidden="true">$</span>
+                            <input id="bet-input" name="amount" type="number" inputmode="decimal" min="10" step="1" value="100" autocomplete="off" aria-describedby="bet-validation">
+                        </div>
+
+                        <div class="quick-bets" aria-label="Quick stake amounts">
+                            <button type="button" class="quick-bet" data-amount="10">$10</button>
+                            <button type="button" class="quick-bet" data-amount="25">$25</button>
+                            <button type="button" class="quick-bet" data-amount="50">$50</button>
+                            <button type="button" class="quick-bet" data-amount="100">$100</button>
+                            <button type="button" class="quick-bet" data-amount="250">$250</button>
+                            <button type="button" class="quick-bet" data-amount="max">Max</button>
+                        </div>
+
+                        <div class="bet-breakdown" aria-live="polite">
+                            <div><span>Stake</span><strong id="summary-stake">$100.00</strong></div>
+                            <div><span>House fee</span><strong id="summary-fee">$5.00</strong></div>
+                            <div class="summary-total"><span>Total at risk</span><strong id="summary-total">$105.00</strong></div>
+                            <div><span>Gross payout on win</span><strong id="summary-payout">$200.00</strong></div>
+                            <div class="summary-profit"><span>Net profit on win</span><strong id="summary-profit">+$95.00</strong></div>
+                        </div>
+
+                        <p class="field-error" id="bet-validation" role="alert" hidden></p>
+                        <button class="primary-button" id="start-round-button" type="submit">Place bet &amp; start round</button>
+                    </form>
+                    <p class="card-footnote" id="bet-auth-note">Sandbox demo is active while the game server is unavailable.</p>
+                </aside>
+            </div>
+        </section>
+
+        <section class="view" id="view-history" data-view-panel="history" aria-labelledby="history-heading" hidden>
+            <div class="page-heading">
+                <div>
+                    <p class="eyebrow">Performance</p>
+                    <h1 id="history-heading">Game history</h1>
+                    <p class="page-subtitle">Review settled rounds, fees, and net results.</p>
+                </div>
+                <button class="secondary-button" id="refresh-history-button" type="button">Refresh history</button>
+            </div>
+            <div class="stat-grid" id="history-stats">
+                <div class="stat-card"><span>Rounds</span><strong id="history-rounds">0</strong></div>
+                <div class="stat-card"><span>Win rate</span><strong id="history-win-rate">0%</strong></div>
+                <div class="stat-card"><span>Total staked</span><strong id="history-staked">$0.00</strong></div>
+                <div class="stat-card"><span>Net profit</span><strong id="history-net">$0.00</strong></div>
+            </div>
+            <div class="panel collection-panel">
+                <div class="collection-toolbar">
+                    <div><h2>Settled rounds</h2><p class="muted">The server is the source of truth in live mode.</p></div>
+                    <div class="segmented-control" role="group" aria-label="History filter">
+                        <button type="button" class="segment is-active" data-history-filter="all">All</button>
+                        <button type="button" class="segment" data-history-filter="win">Wins</button>
+                        <button type="button" class="segment" data-history-filter="loss">Losses</button>
+                    </div>
+                </div>
+                <div class="collection-state" id="history-list" aria-live="polite"></div>
+            </div>
+        </section>
+
+        <section class="view" id="view-bets" data-view-panel="bets" aria-labelledby="bets-heading" hidden>
+            <div class="page-heading">
+                <div>
+                    <p class="eyebrow">Account activity</p>
+                    <h1 id="bets-heading">My bets</h1>
+                    <p class="page-subtitle">Every stake, status, and settlement in one place.</p>
+                </div>
+                <button class="secondary-button" id="refresh-bets-button" type="button">Refresh bets</button>
+            </div>
+            <div class="panel collection-panel">
+                <div class="collection-toolbar"><div><h2>Bet ledger</h2><p class="muted">Pending bets remain open until the round settles.</p></div></div>
+                <div class="collection-state" id="bets-list" aria-live="polite"></div>
+            </div>
+        </section>
+
+        <section class="view" id="view-wallet" data-view-panel="wallet" aria-labelledby="wallet-heading" hidden>
+            <div class="page-heading">
+                <div>
+                    <p class="eyebrow">Funds</p>
+                    <h1 id="wallet-heading">Wallet</h1>
+                    <p class="page-subtitle">Track available funds, round activity, and wallet movement.</p>
+                </div>
+                <button class="secondary-button" id="refresh-wallet-button" type="button">Refresh wallet</button>
+            </div>
+            <div class="wallet-grid">
+                <div class="wallet-balance panel">
+                    <span class="eyebrow">Available now</span>
+                    <strong id="wallet-balance-value">$1,000.00</strong>
+                    <span class="muted" id="wallet-mode-note">Local sandbox balance</span>
+                </div>
+                <div class="wallet-balance panel">
+                    <span class="eyebrow">Reserved</span>
+                    <strong id="wallet-reserved-value">$0.00</strong>
+                    <span class="muted">Open round exposure</span>
+                </div>
+                <div class="wallet-balance panel">
+                    <span class="eyebrow">House fee</span>
+                    <strong id="wallet-fee-value">5.00%</strong>
+                    <span class="muted">Applied to each stake</span>
+                </div>
+            </div>
+            <div class="wallet-columns">
+                <div class="panel collection-panel">
+                    <div class="collection-toolbar"><div><h2>Transactions</h2><p class="muted">Deposits, stakes, payouts, and adjustments.</p></div></div>
+                    <div class="collection-state" id="transactions-list" aria-live="polite"></div>
+                </div>
+                <div class="panel sandbox-tools" id="sandbox-tools">
+                    <span class="eyebrow">Sandbox controls</span>
+                    <h2>Test funds</h2>
+                    <p class="muted">These credits stay in this browser and never touch a live wallet.</p>
+                    <form id="sandbox-funds-form" class="inline-form">
+                        <label class="field-label" for="sandbox-funds-input">Credit amount</label>
+                        <div class="money-input"><span aria-hidden="true">$</span><input id="sandbox-funds-input" type="number" min="1" step="1" value="500"></div>
+                        <button class="secondary-button" type="submit">Add test funds</button>
+                    </form>
+                    <button class="danger-button" id="reset-sandbox-button" type="button">Reset sandbox data</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="view" id="view-profile" data-view-panel="profile" aria-labelledby="profile-heading" hidden>
+            <div class="page-heading">
+                <div>
+                    <p class="eyebrow">Identity</p>
+                    <h1 id="profile-heading">Profile &amp; access</h1>
+                    <p class="page-subtitle">Use a live account for server-backed rounds, or explore locally in sandbox mode.</p>
+                </div>
+            </div>
+            <div class="profile-layout">
+                <div class="panel auth-panel" id="signed-out-panel">
+                    <div class="auth-tabs" role="tablist" aria-label="Account access">
+                        <button class="auth-tab is-active" id="login-tab" type="button" role="tab" aria-selected="true" data-auth-mode="login">Sign in</button>
+                        <button class="auth-tab" id="register-tab" type="button" role="tab" aria-selected="false" data-auth-mode="register">Create account</button>
+                    </div>
+                    <div class="auth-copy"><h2 id="auth-form-heading">Welcome back</h2><p class="muted" id="auth-form-copy">Sign in to sync bets, wallet, and history with the server.</p></div>
+                    <form id="login-form" class="auth-form">
+                        <label class="field-label" for="login-email">Email</label>
+                        <input class="text-input" id="login-email" name="email" type="email" autocomplete="email" required>
+                        <label class="field-label" for="login-password">Password</label>
+                        <input class="text-input" id="login-password" name="password" type="password" autocomplete="current-password" required>
+                        <p class="field-error" id="login-error" role="alert" hidden></p>
+                        <button class="primary-button" type="submit">Sign in</button>
+                    </form>
+                    <form id="register-form" class="auth-form" hidden>
+                        <label class="field-label" for="register-name">Display name</label>
+                        <input class="text-input" id="register-name" name="name" type="text" autocomplete="name" required>
+                        <label class="field-label" for="register-email">Email</label>
+                        <input class="text-input" id="register-email" name="email" type="email" autocomplete="email" required>
+                        <label class="field-label" for="register-password">Password</label>
+                        <input class="text-input" id="register-password" name="password" type="password" minlength="8" autocomplete="new-password" required>
+                        <p class="field-error" id="register-error" role="alert" hidden></p>
+                        <button class="primary-button" type="submit">Create account</button>
+                    </form>
+                    <p class="card-footnote">Sandbox sign-in creates a local demo identity. No password is uploaded while offline.</p>
+                </div>
+
+                <div class="panel profile-panel" id="signed-in-panel" hidden>
+                    <div class="profile-header">
+                        <div class="avatar" id="profile-avatar" aria-hidden="true">GS</div>
+                        <div><span class="eyebrow">Signed in</span><h2 id="profile-name">Player</h2><p class="muted" id="profile-email">player@example.com</p></div>
+                    </div>
+                    <form id="profile-form" class="profile-form">
+                        <label class="field-label" for="profile-display-name">Display name</label>
+                        <input class="text-input" id="profile-display-name" name="name" type="text" required>
+                        <label class="field-label" for="profile-email-input">Email</label>
+                        <input class="text-input" id="profile-email-input" name="email" type="email" readonly>
+                        <p class="profile-role">Role <strong id="profile-role">Player</strong></p>
+                        <p class="field-error" id="profile-error" role="alert" hidden></p>
+                        <div class="form-actions"><button class="secondary-button" type="submit">Save profile</button><button class="danger-button" id="logout-button" type="button">Sign out</button></div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <section class="view" id="view-admin" data-view-panel="admin" aria-labelledby="admin-heading" hidden>
+            <div class="page-heading">
+                <div><p class="eyebrow">Restricted workspace</p><h1 id="admin-heading">Admin console</h1><p class="page-subtitle">Operational metrics and game configuration for authorized operators.</p></div>
+                <button class="secondary-button" id="refresh-admin-button" type="button">Refresh admin</button>
+            </div>
+            <div class="collection-state" id="admin-state" aria-live="polite"></div>
+            <div class="admin-content" id="admin-content" hidden>
+                <div class="stat-grid admin-stats">
+                    <div class="stat-card"><span>Rounds today</span><strong id="admin-rounds">0</strong></div>
+                    <div class="stat-card"><span>Active players</span><strong id="admin-players">0</strong></div>
+                    <div class="stat-card"><span>Volume today</span><strong id="admin-volume">$0.00</strong></div>
+                    <div class="stat-card"><span>House revenue</span><strong id="admin-revenue">$0.00</strong></div>
+                </div>
+                <div class="panel config-panel">
+                    <div class="collection-toolbar"><div><h2>Round configuration</h2><p class="muted">Changes apply to new rounds after the server accepts them.</p></div></div>
+                    <form id="admin-config-form" class="config-form">
+                        <div><label class="field-label" for="config-fee">Fee rate</label><div class="unit-input"><input id="config-fee" type="number" min="0" max="25" step="0.01"><span>%</span></div></div>
+                        <div><label class="field-label" for="config-min">Minimum stake</label><div class="money-input"><span>$</span><input id="config-min" type="number" min="0" step="1"></div></div>
+                        <div><label class="field-label" for="config-max">Maximum stake</label><div class="money-input"><span>$</span><input id="config-max" type="number" min="1" step="1"></div></div>
+                        <div class="form-actions"><p class="field-error" id="admin-error" role="alert" hidden></p><button class="primary-button" type="submit">Save configuration</button></div>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <span>GLASS SHUFFLE</span>
+        <span id="footer-status">Sandbox data stays in this browser.</span>
+    </footer>
+
+    <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+    <div class="sr-only" id="announcer" aria-live="assertive"></div>
 
     <script src="script.js"></script>
 </body>

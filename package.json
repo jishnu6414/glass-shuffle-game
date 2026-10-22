@@ -1,0 +1,15 @@
+{
+  "name": "glass-shuffle-game",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Glass Shuffle static frontend with a dependency-light Node.js backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
