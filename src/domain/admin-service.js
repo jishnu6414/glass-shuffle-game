@@ -5,7 +5,6 @@ const { validateConfig, publicGameConfig } = require('../config');
 const { addAudit } = require('./records');
 
 const MUTABLE_CONFIG_FIELDS = new Set([
-  'targetWinProbabilityBps',
   'feeBps',
   'minBetMinor',
   'maxBetMinor',

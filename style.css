@@ -517,7 +517,7 @@ h2 {
 
 .phase-rail {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 8px;
     padding: 17px 0 0;
     margin: 17px 0 0;
@@ -682,17 +682,26 @@ h2 {
     width: clamp(120px, 17vw, 194px);
     height: clamp(190px, 27vw, 280px);
     transform: translateX(-50%);
-    transition: left 650ms cubic-bezier(0.22, 0.82, 0.26, 1), transform 280ms ease, z-index 0ms linear;
+    transition: left 240ms cubic-bezier(0.22, 0.82, 0.26, 1), transform 180ms ease, z-index 0ms linear;
 }
 
 .cup-wrap.is-lifted {
     z-index: 12;
-    transform: translate(-50%, -28px) rotate(3deg) scale(1.03);
+    transform: translate(-50%, -104px) rotate(3deg) scale(1.03);
+}
+
+.cup-wrap.is-selected {
+    z-index: 12;
+    transform: translate(-50%, -104px) rotate(2deg) scale(1.03);
 }
 
 .cup-wrap.is-winner {
     z-index: 13;
-    transform: translate(-50%, -35px) scale(1.04);
+    transform: translate(-50%, -110px) scale(1.04);
+}
+
+.cup-wrap.is-selected.is-winner {
+    transform: translate(-50%, -114px) scale(1.05);
 }
 
 .cup-wrap.is-loser {
@@ -787,18 +796,63 @@ h2 {
     box-shadow: 0 3px 4px rgba(0, 0, 0, 0.35), inset 0 -4px 4px rgba(80, 80, 80, 0.22);
 }
 
-.cup-label {
+.result-banner {
     position: absolute;
-    right: 0;
-    bottom: -38px;
-    left: 0;
-    color: rgba(255, 255, 255, 0.62);
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
+    top: 18px;
+    left: 50%;
+    z-index: 20;
+    display: flex;
+    min-width: min(300px, calc(100% - 32px));
+    max-width: calc(100% - 32px);
+    transform: translate(-50%, -12px);
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 13px 18px;
+    border: 1px solid rgba(231, 189, 112, 0.35);
+    border-radius: 13px;
+    background: rgba(9, 13, 20, 0.88);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.3);
     text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 220ms ease, transform 220ms ease, border-color 220ms ease;
+}
+
+.result-banner:not([hidden]) {
+    transform: translate(-50%, 0);
+    opacity: 1;
+}
+
+.result-banner.is-win {
+    border-color: rgba(88, 211, 154, 0.45);
+}
+
+.result-banner.is-loss {
+    border-color: rgba(255, 116, 128, 0.4);
+}
+
+.result-banner-kicker {
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.63rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
+}
+
+.result-banner strong {
+    color: var(--gold-bright);
+    font-size: 1.2rem;
+    letter-spacing: -0.02em;
+}
+
+.result-banner.is-win strong { color: var(--green); }
+.result-banner.is-loss strong { color: var(--danger); }
+
+.result-banner > span:last-child {
+    color: var(--muted);
+    font-size: 0.72rem;
 }
 
 .ball {
@@ -823,6 +877,7 @@ h2 {
 
 .ball.is-result {
     z-index: 14;
+    transition: opacity 260ms ease, transform 260ms ease;
     box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.06), 0 0 40px rgba(255, 255, 255, 0.72), inset -6px -8px 11px rgba(87, 91, 97, 0.24);
 }
 
@@ -1722,11 +1777,6 @@ kbd {
         height: 18px;
         border-width: 3px;
         bottom: -5px;
-    }
-
-    .cup-label {
-        bottom: -29px;
-        font-size: 0.58rem;
     }
 
     .board-header,

@@ -72,10 +72,11 @@
                 </div>
                 <ol class="phase-rail" aria-label="Round phases">
                     <li class="phase-step is-current" data-phase-step="BETTING"><span>01</span><strong>Bet</strong></li>
-                    <li class="phase-step" data-phase-step="COVER"><span>02</span><strong>Cover</strong></li>
-                    <li class="phase-step" data-phase-step="SHUFFLING"><span>03</span><strong>Shuffle</strong></li>
-                    <li class="phase-step" data-phase-step="PICKING"><span>04</span><strong>Pick</strong></li>
-                    <li class="phase-step" data-phase-step="RESULT"><span>05</span><strong>Result</strong></li>
+                    <li class="phase-step" data-phase-step="REVEAL"><span>02</span><strong>Reveal</strong></li>
+                    <li class="phase-step" data-phase-step="COVER"><span>03</span><strong>Cover</strong></li>
+                    <li class="phase-step" data-phase-step="SHUFFLING"><span>04</span><strong>Shuffle</strong></li>
+                    <li class="phase-step" data-phase-step="PICKING"><span>05</span><strong>Pick</strong></li>
+                    <li class="phase-step" data-phase-step="RESULT"><span>06</span><strong>Payout</strong></li>
                 </ol>
             </div>
 
@@ -92,10 +93,15 @@
                     <div class="table-surface" id="table-surface" role="group" aria-label="Three cups on the game table">
                         <div class="table-light" aria-hidden="true"></div>
                         <div class="table-edge" aria-hidden="true"></div>
+                        <div class="result-banner" id="result-banner" hidden role="status" aria-live="polite">
+                            <span class="result-banner-kicker" id="result-banner-kicker">Round settled</span>
+                            <strong id="result-banner-title">Round settled</strong>
+                            <span id="result-banner-detail">The server confirmed the result.</span>
+                        </div>
                         <div class="ball" id="ball" aria-hidden="true"><span></span></div>
 
                         <div class="cup-wrap" id="cup-wrap-0" data-cup-id="0" style="left: 16.66%;">
-                            <button class="cup" id="cup-0" type="button" data-cup-id="0" disabled aria-label="Cup 1">
+                            <button class="cup" id="cup-0" type="button" data-cup-id="0" disabled aria-label="Left cup">
                                 <span class="cup-body" aria-hidden="true">
                                     <span class="cup-gloss"></span>
                                     <span class="cup-ridges ridge-one"></span>
@@ -103,11 +109,10 @@
                                     <span class="cup-ridges ridge-three"></span>
                                     <span class="cup-rim"></span>
                                 </span>
-                                <span class="cup-label">1</span>
                             </button>
                         </div>
                         <div class="cup-wrap" id="cup-wrap-1" data-cup-id="1" style="left: 50%;">
-                            <button class="cup" id="cup-1" type="button" data-cup-id="1" disabled aria-label="Cup 2">
+                            <button class="cup" id="cup-1" type="button" data-cup-id="1" disabled aria-label="Center cup">
                                 <span class="cup-body" aria-hidden="true">
                                     <span class="cup-gloss"></span>
                                     <span class="cup-ridges ridge-one"></span>
@@ -115,11 +120,10 @@
                                     <span class="cup-ridges ridge-three"></span>
                                     <span class="cup-rim"></span>
                                 </span>
-                                <span class="cup-label">2</span>
                             </button>
                         </div>
                         <div class="cup-wrap" id="cup-wrap-2" data-cup-id="2" style="left: 83.33%;">
-                            <button class="cup" id="cup-2" type="button" data-cup-id="2" disabled aria-label="Cup 3">
+                            <button class="cup" id="cup-2" type="button" data-cup-id="2" disabled aria-label="Right cup">
                                 <span class="cup-body" aria-hidden="true">
                                     <span class="cup-gloss"></span>
                                     <span class="cup-ridges ridge-one"></span>
@@ -127,7 +131,6 @@
                                     <span class="cup-ridges ridge-three"></span>
                                     <span class="cup-rim"></span>
                                 </span>
-                                <span class="cup-label">3</span>
                             </button>
                         </div>
                     </div>
@@ -154,7 +157,7 @@
                         </div>
                         <div class="balance-limits">
                             <span>Min <strong id="min-bet">$10</strong></span>
-                            <span>Max <strong id="max-bet">$952.38</strong></span>
+                            <span>Max <strong id="max-bet">$1,000</strong></span>
                         </div>
                     </div>
 
@@ -175,11 +178,12 @@
                         </div>
 
                         <div class="bet-breakdown" aria-live="polite">
-                            <div><span>Stake</span><strong id="summary-stake">$100.00</strong></div>
+                            <div><span>Total stake</span><strong id="summary-stake">$100.00</strong></div>
                             <div><span>House fee</span><strong id="summary-fee">$5.00</strong></div>
-                            <div class="summary-total"><span>Total at risk</span><strong id="summary-total">$105.00</strong></div>
-                            <div><span>Gross payout on win</span><strong id="summary-payout">$200.00</strong></div>
-                            <div class="summary-profit"><span>Net profit on win</span><strong id="summary-profit">+$95.00</strong></div>
+                            <div><span>Wager after fee</span><strong id="summary-wager">$95.00</strong></div>
+                            <div class="summary-total"><span>Total at risk</span><strong id="summary-total">$100.00</strong></div>
+                            <div><span>Gross payout on win</span><strong id="summary-payout">$190.00</strong></div>
+                            <div class="summary-profit"><span>Net profit on win</span><strong id="summary-profit">+$90.00</strong></div>
                         </div>
 
                         <p class="field-error" id="bet-validation" role="alert" hidden></p>

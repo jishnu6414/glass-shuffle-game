@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const { HOUSE_WIN_PROBABILITY_BPS } = require('../config');
 
 function nowIso() {
   return new Date().toISOString();
@@ -32,6 +33,7 @@ function normalizeState(state, { config, sessionSecret } = {}) {
   if (!state.meta.createdAt) state.meta.createdAt = nowIso();
   if (!state.config || typeof state.config !== 'object') state.config = { ...config };
   else if (config) state.config = { ...config, ...state.config, mode: 'sandbox' };
+  state.config.targetWinProbabilityBps = HOUSE_WIN_PROBABILITY_BPS;
   if (!state.users || typeof state.users !== 'object') state.users = {};
   if (!state.wallets || typeof state.wallets !== 'object') state.wallets = {};
   if (!state.rounds || typeof state.rounds !== 'object') state.rounds = {};

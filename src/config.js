@@ -1,7 +1,9 @@
 'use strict';
 
+const HOUSE_WIN_PROBABILITY_BPS = 4_500;
+
 const DEFAULT_CONFIG = Object.freeze({
-  targetWinProbabilityBps: 4_500,
+  targetWinProbabilityBps: HOUSE_WIN_PROBABILITY_BPS,
   feeBps: 500,
   minBetMinor: 1_000,
   maxBetMinor: 100_000,
@@ -26,7 +28,7 @@ function integerEnv(env, name, fallback, { min = 0, max = Number.MAX_SAFE_INTEGE
 function loadConfig(env = process.env, overrides = {}) {
   const config = {
     ...DEFAULT_CONFIG,
-    targetWinProbabilityBps: integerEnv(env, 'GS_TARGET_WIN_BPS', DEFAULT_CONFIG.targetWinProbabilityBps, { max: 10_000 }),
+    targetWinProbabilityBps: HOUSE_WIN_PROBABILITY_BPS,
     feeBps: integerEnv(env, 'GS_FEE_BPS', DEFAULT_CONFIG.feeBps, { max: 10_000 }),
     minBetMinor: integerEnv(env, 'GS_MIN_BET_MINOR', DEFAULT_CONFIG.minBetMinor, { min: 1 }),
     maxBetMinor: integerEnv(env, 'GS_MAX_BET_MINOR', DEFAULT_CONFIG.maxBetMinor, { min: 1 }),
@@ -66,6 +68,7 @@ function validateConfig(config) {
   }
 
   if (config.targetWinProbabilityBps > 10_000) throw new Error('targetWinProbabilityBps must be <= 10000');
+  if (config.targetWinProbabilityBps !== HOUSE_WIN_PROBABILITY_BPS) throw new Error('targetWinProbabilityBps is fixed at 4500 (45%)');
   if (config.feeBps > 10_000) throw new Error('feeBps must be <= 10000');
   if (config.minBetMinor < 1) throw new Error('minBetMinor must be positive');
   if (config.maxBetMinor < config.minBetMinor) throw new Error('maxBetMinor must be >= minBetMinor');
@@ -87,6 +90,7 @@ function publicGameConfig(config) {
 }
 
 module.exports = {
+  HOUSE_WIN_PROBABILITY_BPS,
   DEFAULT_CONFIG,
   loadConfig,
   validateConfig,

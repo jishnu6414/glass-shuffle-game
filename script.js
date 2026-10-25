@@ -3,8 +3,8 @@
 
     const STORAGE_KEY = 'glass_shuffle_sandbox_v2';
     const SOUND_KEY = 'glass_shuffle_sound';
-    const PHASES = ['BETTING', 'COVER', 'SHUFFLING', 'PICKING', 'RESULT'];
-    const SHUFFLE_MS = 6200;
+    const PHASES = ['BETTING', 'REVEAL', 'COVER', 'SHUFFLING', 'PICKING', 'RESULT'];
+    const SHUFFLE_MS = 3600;
     const PICK_SECONDS = 15;
     const WIN_MULTIPLIER = 2;
     const DEFAULT_CONFIG = { feeRate: 0.05, minBet: 10, maxBet: 1000 };
@@ -15,9 +15,14 @@
             board: 'Accepting bets'
         },
         COVER: {
-            title: 'Ball covered',
-            message: 'The ball is under one cup. Keep your eyes on the table.',
-            board: 'Ball covered'
+            title: 'Cover the ball',
+            message: 'The cup is lowering. Keep your eyes on the table.',
+            board: 'Covering'
+        },
+        REVEAL: {
+            title: 'Watch the Ball',
+            message: 'The opening position is shown clearly before the glass covers it.',
+            board: 'Initial reveal'
         },
         SHUFFLING: {
             title: 'Cups in motion',
@@ -25,8 +30,8 @@
             board: 'Shuffling'
         },
         PICKING: {
-            title: 'Make your selection',
-            message: 'Choose a cup by clicking it or pressing 1, 2, or 3.',
+            title: 'Choose a Glass',
+            message: 'Choose one glass by clicking it or pressing 1, 2, or 3.',
             board: 'Selection open'
         },
         SUBMITTING: {
@@ -66,6 +71,10 @@
         tableSurface: document.getElementById('table-surface'),
         selectionHelp: document.getElementById('selection-help'),
         ball: document.getElementById('ball'),
+        resultBanner: document.getElementById('result-banner'),
+        resultBannerKicker: document.getElementById('result-banner-kicker'),
+        resultBannerTitle: document.getElementById('result-banner-title'),
+        resultBannerDetail: document.getElementById('result-banner-detail'),
         cupWraps: [0, 1, 2].map((id) => document.getElementById(`cup-wrap-${id}`)),
         cups: [0, 1, 2].map((id) => document.getElementById(`cup-${id}`)),
         betForm: document.getElementById('bet-form'),
@@ -77,6 +86,7 @@
         feeBadge: document.getElementById('fee-badge'),
         summaryStake: document.getElementById('summary-stake'),
         summaryFee: document.getElementById('summary-fee'),
+        summaryWager: document.getElementById('summary-wager'),
         summaryTotal: document.getElementById('summary-total'),
         summaryPayout: document.getElementById('summary-payout'),
         summaryProfit: document.getElementById('summary-profit'),
@@ -168,6 +178,7 @@
         ballVisible: false,
         ballSlot: null,
         selectedSlot: null,
+        resultRevealStage: null,
         roundBusy: false,
         muted: readStorage(SOUND_KEY) === 'true',
         reducedMotion: Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
@@ -295,6 +306,7 @@
     function normalizePhase(value) {
         const phase = safeText(value).toUpperCase().replace(/[-\s]+/g, '_');
         if (phase.includes('BET')) return 'BETTING';
+        if (phase.includes('REVEAL')) return 'REVEAL';
         if (phase.includes('COVER') || phase.includes('REVEAL_START')) return 'COVER';
         if (phase.includes('SHUFF')) return 'SHUFFLING';
         if (phase.includes('PICK') || phase.includes('SELECT')) return 'PICKING';
@@ -332,15 +344,21 @@
         const rawWon = valueAt(raw, ['won', 'isWin'], valueAt(result, ['won', 'isWin']));
         const outcome = safeText(valueAt(raw, ['outcome', 'resultStatus'], valueAt(result, ['outcome', 'status']))).toUpperCase();
         const hasResult = winningSlot !== null || rawWon !== undefined || ['WIN', 'LOSS', 'WON', 'LOST'].includes(outcome) || phase === 'RESULT';
+        const startingSlot = normalizeIndex(valueAt(raw, ['startingGlass', 'startingSlot', 'previewGlass', 'previewSlot'], valueAt(result, ['startingGlass', 'previewGlass'])));
+        const wager = moneyMajor(raw, ['wager', 'betAmount'], ['wagerMinor', 'betMinor'], moneyMajor(raw, ['amount'], ['amountMinor']));
+        const fee = moneyMajor(raw, ['fee', 'houseFee'], ['feeMinor']);
+        const total = moneyMajor(raw, ['total', 'totalAtRisk', 'stake'], ['totalDebitedMinor', 'stakeMinor'], wager + fee);
         return {
             id,
             betId: safeText(valueAt(raw, ['betId', 'wagerId', 'bet_id'])),
             phase,
-            amount: moneyMajor(raw, ['amount', 'stake', 'betAmount'], ['betMinor']),
-            fee: moneyMajor(raw, ['fee', 'houseFee'], ['feeMinor']),
-            total: moneyMajor(raw, ['total', 'totalAtRisk'], ['totalDebitedMinor']),
+            amount: total,
+            wager,
+            fee,
+            total,
             selectedSlot,
             winningSlot,
+            previewSlot: startingSlot,
             won: rawWon === undefined ? (outcome === 'WIN' || outcome === 'WON' ? true : outcome === 'LOSS' || outcome === 'LOST' ? false : null) : Boolean(rawWon),
             payout: moneyMajor(raw, ['payout', 'grossPayout', 'return'], ['payoutMinor'], moneyMajor(result, ['payout', 'grossPayout'], ['payoutMinor'])),
             net: moneyMajor(raw, ['net', 'netProfit'], ['netMinor'], moneyMajor(result, ['net', 'netProfit'], ['netMinor'])),
@@ -359,17 +377,19 @@
         const object = raw.record && typeof raw.record === 'object' ? raw.record : raw;
         const result = safeText(valueAt(object, ['result', 'outcome', 'status']), 'PENDING').toUpperCase();
         const won = result === 'WIN' || result === 'WON' || object.won === true || object.isWin === true;
-        const amount = moneyMajor(object, ['amount', 'stake', 'bet', 'betAmount'], ['betMinor']);
-        const fee = moneyMajor(object, ['fee', 'houseFee'], ['feeMinor'], amount * DEFAULT_CONFIG.feeRate);
-        const payout = moneyMajor(object, ['payout', 'grossPayout', 'return'], ['payoutMinor'], won ? amount * WIN_MULTIPLIER : 0);
+        const wager = moneyMajor(object, ['wager', 'betAmount'], ['wagerMinor', 'betMinor'], moneyMajor(object, ['amount'], ['amountMinor']));
+        const fee = moneyMajor(object, ['fee', 'houseFee'], ['feeMinor'], wager * DEFAULT_CONFIG.feeRate);
+        const amount = moneyMajor(object, ['total', 'totalAtRisk', 'stake', 'amount', 'bet'], ['totalDebitedMinor', 'stakeMinor', 'amountMinor'], wager + fee);
+        const payout = moneyMajor(object, ['payout', 'grossPayout', 'return'], ['payoutMinor'], won ? wager * WIN_MULTIPLIER : 0);
         const net = valueAt(object, ['net', 'netProfit']) === undefined
-            ? (won ? payout - amount - fee : -amount - fee)
+            ? (won ? payout - amount : -amount)
             : finiteOr(valueAt(object, ['net', 'netProfit']), 0);
         return {
             id: safeText(valueAt(object, ['id', 'roundId', 'betId']), `record-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`),
             roundId: safeText(valueAt(object, ['roundId', 'gameId'])),
             result: won ? 'WIN' : result === 'PENDING' ? 'PENDING' : 'LOSS',
             amount,
+            wager,
             fee,
             payout,
             net,
@@ -725,7 +745,7 @@
     }
 
     function renderBalances() {
-        const availableMax = Math.max(0, Math.min(state.config.maxBet, state.balance / (1 + state.config.feeRate)));
+        const availableMax = Math.max(0, Math.min(state.config.maxBet, state.balance));
         setText(dom.topBalance, currency(state.balance));
         setText(dom.betBalance, currency(state.balance));
         setText(dom.minBet, currency(state.config.minBet).replace('.00', ''));
@@ -742,9 +762,10 @@
     function currentBetValues() {
         const amount = finiteOr(dom.betInput && dom.betInput.value, state.betAmount);
         const fee = amount * state.config.feeRate;
-        const total = amount + fee;
-        const payout = amount * WIN_MULTIPLIER;
-        return { amount, fee, total, payout, profit: payout - total };
+        const wager = Math.max(0, amount - fee);
+        const total = amount;
+        const payout = wager * WIN_MULTIPLIER;
+        return { amount, fee, wager, total, payout, profit: payout - total };
     }
 
     function validateBet(amount = currentBetValues().amount) {
@@ -753,7 +774,7 @@
         if (!Number.isFinite(amount) || amount <= 0) return 'Enter a valid stake amount.';
         if (amount < state.config.minBet) return `Minimum stake is ${currency(state.config.minBet)}.`;
         if (amount > state.config.maxBet) return `Maximum stake is ${currency(state.config.maxBet)}.`;
-        if (amount * (1 + state.config.feeRate) > state.balance + 0.000001) return 'Your balance does not cover the stake and house fee.';
+        if (amount > state.balance + 0.000001) return 'Your balance does not cover the total stake and house fee allocation.';
         if (state.mode === 'live' && !state.user) return 'Sign in to place a live bet.';
         return '';
     }
@@ -764,13 +785,14 @@
         state.betAmount = Number.isFinite(values.amount) ? values.amount : state.betAmount;
         setText(dom.summaryStake, currency(values.amount));
         setText(dom.summaryFee, currency(values.fee));
+        setText(dom.summaryWager, currency(values.wager));
         setText(dom.summaryTotal, currency(values.total));
         setText(dom.summaryPayout, currency(values.payout));
         setText(dom.summaryProfit, currency(values.profit, true));
         dom.summaryProfit.classList.toggle('is-negative', values.profit < 0);
         dom.betInput.disabled = state.roundBusy || state.phase !== 'BETTING';
         dom.quickBets.forEach((button) => {
-            const quickValue = button.dataset.amount === 'max' ? Math.floor(Math.min(state.config.maxBet, state.balance / (1 + state.config.feeRate))) : Number(button.dataset.amount);
+            const quickValue = button.dataset.amount === 'max' ? Math.floor(Math.min(state.config.maxBet, state.balance)) : Number(button.dataset.amount);
             button.classList.toggle('is-active', Number.isFinite(values.amount) && Math.abs(values.amount - quickValue) < 0.001);
             button.disabled = dom.betInput.disabled;
         });
@@ -788,9 +810,26 @@
 
     function renderPhase() {
         const copy = phaseCopy[state.phase] || phaseCopy.BETTING;
-        setText(dom.phaseTitle, copy.title);
-        setText(dom.phaseMessage, copy.message);
-        setText(dom.boardStatus, copy.board);
+        const isResult = state.phase === 'RESULT' && state.round;
+        const resultWon = Boolean(isResult && state.round.won);
+        setText(dom.phaseTitle, isResult ? (resultWon ? 'You found it' : 'Not this time') : copy.title);
+        setText(dom.phaseMessage, isResult
+            ? (resultWon ? 'The ball was under your selected glass.' : 'The ball was under a different glass.')
+            : copy.message);
+        setText(dom.boardStatus, isResult ? (resultWon ? 'Win confirmed' : 'Loss confirmed') : copy.board);
+        dom.tableSurface.classList.toggle('is-win', Boolean(isResult && resultWon));
+        dom.tableSurface.classList.toggle('is-loss', Boolean(isResult && !resultWon));
+        if (dom.resultBanner) {
+            const showBanner = Boolean(isResult && state.resultRevealStage === 'done');
+            dom.resultBanner.hidden = !showBanner;
+            dom.resultBanner.classList.toggle('is-win', Boolean(showBanner && resultWon));
+            dom.resultBanner.classList.toggle('is-loss', Boolean(showBanner && !resultWon));
+            setText(dom.resultBannerKicker, showBanner ? (resultWon ? 'Payout confirmed' : 'Round settled') : 'Round settled');
+            setText(dom.resultBannerTitle, showBanner ? (resultWon ? 'YOU FOUND IT' : 'NOT THIS TIME') : 'Round settled');
+            setText(dom.resultBannerDetail, showBanner
+                ? (resultWon ? `Net profit ${currency(state.round.net, true)}` : `Net result ${currency(state.round.net, true)}`)
+                : 'The server confirmed the result.');
+        }
         dom.phaseSteps.forEach((step) => {
             const phase = step.dataset.phaseStep;
             const current = phase === state.phase;
@@ -821,14 +860,19 @@
         });
         dom.cups.forEach((cup, cupId) => {
             const slot = state.slotToCup.indexOf(cupId);
-            const label = `Cup ${slot + 1}`;
+            const label = ['Left cup', 'Center cup', 'Right cup'][slot] || 'Cup';
             cup.disabled = state.phase !== 'PICKING';
-            cup.setAttribute('aria-label', state.phase === 'PICKING' ? `Select ${label}` : label);
+            cup.setAttribute('aria-label', state.phase === 'PICKING' ? `Select ${label}, keyboard ${slot + 1}` : label);
             cup.setAttribute('aria-pressed', String(state.selectedSlot === slot));
             const wrapper = dom.cupWraps[cupId];
             if (wrapper) {
-                wrapper.classList.toggle('is-winner', state.phase === 'RESULT' && state.round && state.round.winningSlot === slot);
-                wrapper.classList.toggle('is-loser', state.phase === 'RESULT' && state.round && state.round.winningSlot !== null && state.round.winningSlot !== slot);
+                const isResult = state.phase === 'RESULT' && state.round;
+                const isSelected = Boolean(isResult && state.round.selectedSlot === slot);
+                const isWinner = Boolean(isResult && state.round.winningSlot === slot);
+                const revealStage = state.resultRevealStage;
+                wrapper.classList.toggle('is-selected', isSelected && ['selected', 'winner', 'done'].includes(revealStage));
+                wrapper.classList.toggle('is-winner', isWinner && ['winner', 'done'].includes(revealStage));
+                wrapper.classList.toggle('is-loser', Boolean(isResult && revealStage === 'done' && !isWinner));
             }
         });
         const ballSlot = state.ballSlot === null ? 1 : state.ballSlot;
@@ -871,7 +915,8 @@
             const mark = makeElement('span', `record-mark ${status === 'WIN' ? 'is-win' : status === 'LOSS' ? 'is-loss' : ''}`, status === 'WIN' ? 'W' : status === 'LOSS' ? 'L' : '·');
             const copy = makeElement('div');
             copy.appendChild(makeElement('div', 'record-title', type === 'bets' ? `${record.status} · ${record.roundId || record.id}` : `${status} round`));
-            copy.appendChild(makeElement('div', 'record-detail', `Stake ${currency(record.amount)} · Fee ${currency(record.fee)}`));
+            const wager = record.wager === undefined ? Math.max(0, record.amount - record.fee) : record.wager;
+            copy.appendChild(makeElement('div', 'record-detail', `Bet ${currency(record.amount)} · Wager ${currency(wager)} · Fee ${currency(record.fee)}`));
             main.append(mark, copy);
             const side = makeElement('div', 'record-side');
             const amount = type === 'bets' && record.status === 'OPEN' ? record.amount : record.net;
@@ -988,13 +1033,17 @@
         state.phase = next;
         if (next !== 'BETTING') state.roundBusy = true;
         if (next === 'BETTING') state.roundBusy = false;
-        if (next === 'COVER') {
+        if (next === 'REVEAL') {
             state.ballVisible = true;
-            state.ballSlot = state.round && state.round.previewSlot !== undefined ? state.round.previewSlot : (state.ballSlot ?? 1);
+            state.ballSlot = state.round && state.round.previewSlot !== null && state.round.previewSlot !== undefined
+                ? state.round.previewSlot
+                : (state.ballSlot === null ? 1 : state.ballSlot);
+        } else if (next === 'COVER') {
+            state.ballVisible = false;
         } else if (next === 'SHUFFLING' || next === 'PICKING' || next === 'SUBMITTING') {
             state.ballVisible = false;
         } else if (next === 'RESULT') {
-            state.ballVisible = true;
+            state.ballVisible = false;
             if (state.round && state.round.winningSlot !== null && state.round.winningSlot !== undefined) state.ballSlot = state.round.winningSlot;
         }
         renderPhase();
@@ -1028,10 +1077,32 @@
         dom.cupWraps.forEach((wrapper, cupId) => {
             wrapper.style.left = ['16.66%', '50%', '83.33%'][cupId];
             wrapper.style.zIndex = '4';
-            wrapper.classList.remove('is-lifted', 'is-winner', 'is-loser');
+            wrapper.classList.remove('is-lifted', 'is-selected', 'is-winner', 'is-loser');
         });
         dom.ball.classList.remove('is-result');
         renderBoard();
+    }
+
+    function liftCupAtSlot(slot, className = 'is-lifted') {
+        if (!Number.isInteger(slot) || slot < 0 || slot > 2) return null;
+        const cupId = state.slotToCup[slot];
+        const wrapper = dom.cupWraps[cupId];
+        if (wrapper) wrapper.classList.add(className);
+        return wrapper;
+    }
+
+    function secureRandomInt(maxExclusive) {
+        if (!Number.isInteger(maxExclusive) || maxExclusive < 1) return 0;
+        if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
+            const range = 0x1_0000_0000;
+            const limit = Math.floor(range / maxExclusive) * maxExclusive;
+            const sample = new Uint32Array(1);
+            do {
+                window.crypto.getRandomValues(sample);
+            } while (sample[0] >= limit);
+            return sample[0] % maxExclusive;
+        }
+        return Math.floor(Math.random() * maxExclusive);
     }
 
     function swapVisualSlots(slotA, slotB, sandboxOutcome) {
@@ -1050,11 +1121,17 @@
     async function animateShuffle(token, sandboxOutcome) {
         setPhase('SHUFFLING');
         const reduced = state.reducedMotion;
-        const stepCount = reduced ? 3 : 9;
+        const stepCount = reduced ? 3 : 14;
         const stepDelay = reduced ? 0 : Math.floor(SHUFFLE_MS / stepCount);
+        const shuffleStarted = Date.now();
+        const shuffleDuration = Math.max(1, stepCount * stepDelay + (stepCount - 1) * 28);
         let previousPair = '';
         for (let index = 0; index < stepCount; index += 1) {
             if (token !== roundToken || state.phase === 'PICKING' || state.phase === 'RESULT' || state.phase === 'SUBMITTING') return false;
+            const elapsed = Math.min(shuffleDuration, Date.now() - shuffleStarted);
+            const remaining = Math.max(0, shuffleDuration - elapsed);
+            setText(dom.phaseClockLabel, `Shuffling · ${Math.max(0, Math.ceil(remaining / 1000))}s`);
+            dom.phaseProgress.style.transform = `scaleX(${Math.max(0.04, remaining / shuffleDuration)})`;
             let slotA = 0;
             let slotB = 1;
             do {
@@ -1069,9 +1146,29 @@
             playTone('shuffle');
             await wait(stepDelay, token);
             if (wrapper) wrapper.classList.remove('is-lifted');
-            await wait(reduced ? 0 : 46, token);
+            await wait(reduced ? 0 : 28, token);
         }
+        setText(dom.phaseClockLabel, 'Shuffle complete');
+        dom.phaseProgress.style.transform = 'scaleX(0)';
         return token === roundToken;
+    }
+
+    async function runRevealAndShuffle(token, sandboxOutcome) {
+        if (token !== roundToken || !state.round) return false;
+        const previewSlot = Number.isInteger(state.round.previewSlot) ? state.round.previewSlot : secureRandomInt(3);
+        state.round.previewSlot = previewSlot;
+        state.ballSlot = previewSlot;
+        state.resultRevealStage = null;
+        setPhase('REVEAL');
+        const previewCup = liftCupAtSlot(previewSlot);
+        renderBoard();
+        await wait(state.reducedMotion ? 0 : 1_100, token);
+        if (token !== roundToken) return false;
+        if (previewCup) previewCup.classList.remove('is-lifted');
+        setPhase('COVER');
+        await wait(state.reducedMotion ? 0 : 480, token);
+        if (token !== roundToken) return false;
+        return animateShuffle(token, sandboxOutcome);
     }
 
     async function startSandboxRound(amount) {
@@ -1079,16 +1176,18 @@
         clearRoundTimers();
         resetCupPositions();
         const fee = amount * state.config.feeRate;
-        const total = amount + fee;
-        const hiddenSlot = Math.floor(Math.random() * 3);
+        const wager = Math.max(0, amount - fee);
+        const total = amount;
+        const previewSlot = secureRandomInt(3);
         state.round = {
             id: `demo-${Date.now().toString(36)}`,
             betId: `demo-bet-${Date.now().toString(36)}`,
             amount,
+            wager,
             fee,
             total,
-            hiddenSlot,
-            previewSlot: hiddenSlot,
+            hiddenSlot: previewSlot,
+            previewSlot,
             selectedSlot: null,
             winningSlot: null,
             won: null,
@@ -1097,7 +1196,7 @@
             resultHandled: false
         };
         state.selectedSlot = null;
-        state.ballSlot = hiddenSlot;
+        state.ballSlot = previewSlot;
         state.balance -= total;
         state.transactions.unshift({
             id: `txn-${Date.now().toString(36)}-stake`,
@@ -1113,6 +1212,7 @@
             result: 'PENDING',
             status: 'OPEN',
             amount,
+            wager,
             fee,
             payout: 0,
             net: -total,
@@ -1121,12 +1221,7 @@
         state.bets.unshift(existingBet);
         state.history.unshift(existingBet);
         persistSandbox();
-        setPhase('COVER');
-        await wait(state.reducedMotion ? 0 : 850, token);
-        if (token !== roundToken) return;
-        state.ballVisible = false;
-        renderBoard();
-        await animateShuffle(token, true);
+        await runRevealAndShuffle(token, true);
         if (token !== roundToken) return;
         enterPicking(token, null);
     }
@@ -1198,7 +1293,7 @@
         const token = roundToken;
         const winningSlot = state.round.hiddenSlot;
         const won = selectedSlot !== null && selectedSlot === winningSlot;
-        const payout = won ? state.round.amount * WIN_MULTIPLIER : 0;
+        const payout = won ? state.round.wager * WIN_MULTIPLIER : 0;
         const net = won ? payout - state.round.total : -state.round.total;
         state.round = { ...state.round, winningSlot, won, payout, net, resultHandled: true };
         state.balance += payout;
@@ -1217,13 +1312,35 @@
             });
         }
         persistSandbox();
-        setPhase('RESULT');
-        playTone(won ? 'win' : 'lose');
-        announce(won ? 'You won the sandbox round.' : 'The sandbox round was a loss.');
-        showToast(won ? `Win confirmed. Gross payout ${currency(payout)}.` : selectedSlot === null ? 'Time expired. The round was settled as a loss.' : 'Loss confirmed. Try another round.', won ? 'success' : 'error');
+        await revealRoundResult(token, won, selectedSlot === null ? 'Time expired. The round was settled as a loss.' : null);
         renderHistory();
         renderBets();
         renderWallet();
+    }
+
+    async function revealRoundResult(token, won, lossMessage = null) {
+        if (token !== roundToken || !state.round) return;
+        state.resultRevealStage = 'selected';
+        state.ballVisible = false;
+        setPhase('RESULT');
+        renderBoard();
+        const selectedDelay = state.reducedMotion ? 0 : 420;
+        await wait(selectedDelay, token);
+        if (token !== roundToken || !state.round) return;
+        state.resultRevealStage = 'winner';
+        renderBoard();
+        await wait(state.reducedMotion ? 0 : 260, token);
+        if (token !== roundToken || !state.round) return;
+        state.resultRevealStage = 'done';
+        state.ballSlot = state.round.winningSlot;
+        state.ballVisible = true;
+        renderPhase();
+        renderBoard();
+        playTone(won ? 'win' : 'lose');
+        announce(won ? 'You won the round.' : 'You lost the round.');
+        showToast(won
+            ? `Win confirmed. Gross payout ${currency(state.round.payout)}.`
+            : (lossMessage || 'Loss confirmed. Try another round.'), won ? 'success' : 'error');
         schedule(() => {
             if (token === roundToken) resetRound();
         }, state.reducedMotion ? 900 : 3600);
@@ -1234,7 +1351,8 @@
         clearRoundTimers();
         resetCupPositions();
         const fee = amount * state.config.feeRate;
-        const total = amount + fee;
+        const wager = Math.max(0, amount - fee);
+        const total = amount;
         try {
             const betResponse = await api.placeBet({ amount, stake: amount, fee, total, currency: 'USD' });
             if (token !== roundToken) return;
@@ -1252,11 +1370,12 @@
                 amount: normalized.amount || amount,
                 fee: normalized.fee || fee,
                 total: normalized.total || total,
-                previewSlot: 1,
+                wager: normalized.wager || wager,
+                previewSlot: normalized.previewSlot === null || normalized.previewSlot === undefined ? secureRandomInt(3) : normalized.previewSlot,
                 resultHandled: false
             };
             state.selectedSlot = null;
-            state.ballSlot = 1;
+            state.ballSlot = state.round.previewSlot;
             setPhase(normalized.phase === 'PICKING' ? 'PICKING' : 'COVER');
             startLivePolling(token);
             if (state.phase === 'PICKING') {
@@ -1280,13 +1399,7 @@
     }
 
     async function runLiveVisual(token) {
-        state.ballVisible = true;
-        renderBoard();
-        await wait(state.reducedMotion ? 0 : 850, token);
-        if (token !== roundToken || state.phase === 'RESULT' || state.phase === 'PICKING') return;
-        state.ballVisible = false;
-        renderBoard();
-        await animateShuffle(token, false);
+        await runRevealAndShuffle(token, false);
         if (token !== roundToken || state.phase === 'RESULT' || state.phase === 'PICKING') return;
         try {
             const response = await api.advanceRound(state.round.id, { phase: 'PICKING' });
@@ -1358,12 +1471,8 @@
         state.round.payout = normalized.payout;
         state.round.net = normalized.net || (state.round.won ? normalized.payout - state.round.total : -state.round.total);
         if (normalized.balance !== undefined && Number.isFinite(Number(normalized.balance))) state.balance = Number(normalized.balance);
-        setPhase('RESULT');
-        playTone(state.round.won ? 'win' : 'lose');
-        announce(state.round.won ? 'The server confirmed a win.' : 'The server confirmed a loss.');
-        showToast(state.round.won ? `Server result: win. Gross payout ${currency(state.round.payout)}.` : 'Server result: loss.', state.round.won ? 'success' : 'error');
+        void revealRoundResult(roundToken, state.round.won, state.round.won ? null : 'Server result: loss.');
         void refreshAccount({ silent: true });
-        schedule(() => resetRound(), state.reducedMotion ? 900 : 3600);
     }
 
     function resetRound() {
@@ -1371,6 +1480,7 @@
         roundToken += 1;
         state.round = null;
         state.selectedSlot = null;
+        state.resultRevealStage = null;
         state.ballVisible = false;
         state.ballSlot = null;
         state.phase = 'BETTING';
@@ -1650,9 +1760,17 @@
     }
 
     async function handleLogout() {
+        if (state.roundBusy) {
+            showToast('Finish the current round before signing out.', 'info');
+            return;
+        }
         if (state.mode === 'live') {
             try { await api.logout(); } catch (error) { /* Clear local session even when the server is unavailable. */ }
             writeStorage('glass_shuffle_session', '');
+            state.balance = 0;
+            state.history = [];
+            state.bets = [];
+            state.transactions = [];
         }
         state.user = null;
         state.admin = { allowed: false, stats: null, config: null, error: '' };
@@ -1771,7 +1889,7 @@
         });
         dom.quickBets.forEach((button) => {
             button.addEventListener('click', () => {
-                const max = Math.floor(Math.min(state.config.maxBet, state.balance / (1 + state.config.feeRate)));
+                const max = Math.floor(Math.min(state.config.maxBet, state.balance));
                 dom.betInput.value = button.dataset.amount === 'max' ? Math.max(state.config.minBet, max) : button.dataset.amount;
                 state.betAmount = Number(dom.betInput.value);
                 renderBetPanel();

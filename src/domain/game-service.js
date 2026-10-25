@@ -37,6 +37,9 @@ function publicRound(round, { includeAudit = false } = {}) {
     betMinor: round.betMinor,
     feeMinor: round.feeMinor,
     totalDebitedMinor: round.totalDebitedMinor,
+    stakeMinor: round.totalDebitedMinor,
+    wagerMinor: round.betMinor,
+    startingGlass: round.startingGlass,
     grossPayoutMultiplier: round.grossPayoutMultiplier,
     targetWinProbabilityBps: round.targetWinProbabilityBps,
     serverSeedHash: round.serverSeedHash,
@@ -71,6 +74,7 @@ function auditRoundHash(round) {
     serverSeed: round.serverSeed,
     targetRoll: round.targetRoll,
     targetWin: round.targetWin,
+    startingGlass: round.startingGlass,
     selectedGlass: round.selectedGlass,
     winningGlass: round.winningGlass,
     outcome: round.outcome,
@@ -129,8 +133,14 @@ class GameService {
       }
       const wallet = state.wallets[userId];
       if (!wallet) throw notFound('Wallet not found');
+      // The submitted amount is the player's total stake. The house fee is
+      // taken from that amount immediately, leaving the remainder as the
+      // actual wager. For example, 10,000 minor units becomes a 9,500-unit
+      // wager plus a 500-unit fee, with exactly 10,000 units debited.
       const feeMinor = calculateFeeMinor(amountMinor, config.feeBps);
-      const totalDebitedMinor = amountMinor + feeMinor;
+      const betMinor = amountMinor - feeMinor;
+      const totalDebitedMinor = amountMinor;
+      if (betMinor < 1) throw badRequest('INVALID_MONEY', 'Bet amount must leave a positive wager after the fee');
       if (!Number.isSafeInteger(totalDebitedMinor)) throw badRequest('INVALID_MONEY', 'Bet total exceeds safe integer range');
       if (wallet.balanceMinor < totalDebitedMinor) throw conflict('INSUFFICIENT_FUNDS', 'Insufficient wallet funds for bet and fee');
 
@@ -144,9 +154,10 @@ class GameService {
         id: roundId,
         userId,
         status: 'OPEN',
-        betMinor: amountMinor,
+        betMinor,
         feeMinor,
         totalDebitedMinor,
+        startingGlass: randomness.winningGlass,
         grossPayoutMultiplier: config.grossPayoutMultiplier,
         targetWinProbabilityBps: config.targetWinProbabilityBps,
         serverSeed: randomness.serverSeed,
@@ -177,7 +188,7 @@ class GameService {
         balanceAfterMinor: wallet.balanceMinor,
         referenceId: roundId,
         metadata: {
-          betMinor: amountMinor,
+          betMinor,
           feeMinor,
           feeBps: config.feeBps,
           mode: 'sandbox'
@@ -189,6 +200,7 @@ class GameService {
         entityId: roundId,
         details: {
           amountMinor,
+          betMinor,
           feeMinor,
           totalDebitedMinor,
           serverSeedHash: randomness.serverSeedHash,
